@@ -31,6 +31,8 @@ public class ClientGame extends JPanel implements ActionListener {
     boolean isEnded = false;
     boolean[] pressedKeys = new boolean[2];
     Date date;
+    boolean ready = false;
+    JButton button;
 
     String[] players = new String[4];
     JFrame window1, window;
@@ -83,6 +85,39 @@ public class ClientGame extends JPanel implements ActionListener {
         window.setBackground(Color.BLACK);
         window.setDefaultCloseOperation(window.EXIT_ON_CLOSE);
         window.setResizable(false);
+
+        button = new JButton("Ready");
+        button.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (ready){
+                    button.setText("Ready");
+                    ready = false;
+                    JSONObject json = new JSONObject();
+                    String message;
+                    json.put("mainTag", "ready");
+                    json.put("value", false);
+                    message = json.toString();
+                    out.println(message);
+                }
+                else {
+                    button.setText("Not ready");
+                    ready = true;
+                    JSONObject json = new JSONObject();
+                    String message;
+                    json.put("mainTag", "ready");
+                    json.put("value", true);
+                    message = json.toString();
+                    out.println(message);
+                }
+            }
+        });
+        window.add(button);
+        button.setBounds(250, 130, 300, 70);
+        button.setBackground(Color.black);
+        button.setForeground(Color.white);
+        button.setFont(new Font("Serif", Font.BOLD, 30));
+        button.setVisible(true);
 
 
         window.addKeyListener(new KeyListener() {
@@ -263,6 +298,7 @@ public class ClientGame extends JPanel implements ActionListener {
                 }
                 else if (js.getString("mainTag").equals("startGame")){
                     isStarted = true;
+                    button.setVisible(false);
                 }
                 else if (js.getString("mainTag").equals("endGame")){
                     isStarted = false;
@@ -270,6 +306,8 @@ public class ClientGame extends JPanel implements ActionListener {
                     for (int i = 0; i<4; i++){
                         players[i] = ar.getString(i);
                     }
+                    button.setVisible(true);
+                    button.setText("Ready");
                 }
             }
         }

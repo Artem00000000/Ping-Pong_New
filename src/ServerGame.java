@@ -1,9 +1,14 @@
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.PrintWriter;
 import java.util.Date;
 import java.util.Random;
+import java.io.PrintWriter;
 
 public class ServerGame implements ActionListener {
 
@@ -14,6 +19,8 @@ public class ServerGame implements ActionListener {
     int maxCountPlayers;
     int countPlayers;
 
+    int countdown = -1;
+    Date countdownTime;
     Date time;
     Date time1 = new Date();
     Date time2 = new Date();
@@ -21,7 +28,7 @@ public class ServerGame implements ActionListener {
     Date time4 = new Date();
     Timer timer;
     boolean isStopped = true;
-    boolean[] pressedKeys = new boolean[8];
+    boolean[][] pressedKeys = new boolean[4][2];
 
     Random random = new Random();
     boolean gameOver = false;
@@ -30,6 +37,8 @@ public class ServerGame implements ActionListener {
     int game_field_start_point_y = 0;
     Bit[] bits = new Bit[4];
     Ball ball = new Ball();
+    String[] players = new String[4];
+    PrintWriter[] out = new PrintWriter[4];
 
 
     ServerGame(int id, String name, String password, int countPlayers, int maxCountPlayers){
@@ -38,6 +47,22 @@ public class ServerGame implements ActionListener {
         this.password = password;
         this.maxCountPlayers = maxCountPlayers;
         this.countPlayers = countPlayers;
+        players[0] = "not ready";
+        if (maxCountPlayers == 2){
+            players[1] = "none";
+            players[2] = "wall";
+            players[3] = "wall";
+        }
+        else if (maxCountPlayers == 3){
+            players[1] = "none";
+            players[2] = "none";
+            players[3] = "wall";
+        }
+        else if (maxCountPlayers == 4){
+            players[1] = "none";
+            players[2] = "none";
+            players[3] = "none";
+        }
 //        bits[0] = new Bit(20,340,0, 5, 4, 70);
 //        if (bit3.equals("player")) {
 //            bits[1] = new Bit(766, 340, 0, 5, 4, 70);
@@ -57,8 +82,9 @@ public class ServerGame implements ActionListener {
 //        else{
 //            bits[3] = new Bit(20,746,0, 0, 750, 4);
 //        }
-        for (int i=0; i<8; i++){
-            pressedKeys[i] = false;
+        for (int i=0; i<4; i++){
+            pressedKeys[i][0] = false;
+            pressedKeys[i][1] = false;
         }
 
         timer = new Timer(10, this);
@@ -68,21 +94,29 @@ public class ServerGame implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        for (int i=0; i<8; i++){
-            if (pressedKeys[i]){
-                if (i<4){
+        if (countdown == 0){
+            countdown = -1;
+        }
+        if(countdown == -1) {
+            for (int i = 0; i < 4; i++) {
+                if (pressedKeys[i][0]) {
                     bits[i].direction = 1;
                     bits[i].move();
                 }
-                else{
-                    bits[i-4].direction = -1;
-                    bits[i-4].move();
+                if (pressedKeys[i][1]) {
+                    bits[i].direction = -1;
+                    bits[i].move();
                 }
             }
+            ball.move();
+            ball.isHitted();
+            ball.isLosed();
         }
-        ball.move();
-        ball.isHitted();
-        ball.isLosed();
+        else{
+            Date t = new Date();
+            countdown = countdown - (int) ((t.getTime() - countdownTime.getTime())/1000);
+        }
+        sendJSON("game");
     }
 
 
@@ -112,40 +146,35 @@ public class ServerGame implements ActionListener {
 
         void isHitted(){
             time = new Date();
-            boolean t = false;
-            if (paintX + sizeX >= game_field_size + game_field_start_point_x - 4 && paintY > bits[1].y + bits[1].globalY && paintY < bits[1].y + bits[1].globalY + bits[1].sizeY){
+            if (x + sizeX/2 >= 750 - 4 && y > bits[1].y - bits[1].sizeY/2 && y < bits[1].y + bits[1].sizeY/2){
                 if (time.getTime() - time1.getTime() > 500){
                     dx = -dx;
                     time1 = time;
-                    t = true;
                 }
             }
-            if (paintX <= game_field_start_point_x + 4 && paintY > bits[0].y + bits[0].globalY && paintY < bits[0].y + bits[0].globalY + bits[0].sizeY){
+            if (x - sizeX/2 <= 4 && y > bits[0].y - bits[0].sizeY/2 && y < bits[0].y + bits[0].sizeY/2){
                 if (time.getTime() - time2.getTime() > 500){
                     dx = -dx;
                     time2 = time;
-                    t = true;
                 }
             }
-            if (paintY + sizeY >= game_field_size + game_field_start_point_y - 4 && paintX > bits[3].x + bits[3].globalX && paintX < bits[3].x + bits[3].globalX + bits[3].sizeX){
+            if (y + sizeY/2 >= 750 - 4 && x > bits[3].x - bits[3].sizeX/2 && x < bits[3].x + bits[3].sizeX/2){
                 if (time.getTime() - time3.getTime() > 500){
                     dy = -dy;
                     time3 = time;
-                    t = true;
                 }
             }
-            if (paintY <= game_field_start_point_y + 4 && paintX > bits[2].x + bits[2].globalX && paintX < bits[2].x + bits[2].globalX + bits[2].sizeX){
+            if (y - sizeY/2 <= 4 && x > bits[2].x - bits[2].sizeX/2 && x < bits[2].x + bits[2].sizeX/2){
                 if (time.getTime() - time4.getTime() > 500){
                     dy = -dy;
                     time4 = time;
-                    t = true;
                 }
             }
         }
 
         void isLosed(){
             boolean t = false;
-            if (paintX + sizeX/2 > game_field_size + game_field_start_point_x - 4 && !(paintY >= bits[1].y + bits[1].globalY && paintY <= bits[1].y + bits[1].globalY + bits[1].sizeY)){
+            if (x > 750 - 4 && !(y > bits[1].y - bits[1].sizeY/2 && y < bits[1].y + bits[1].sizeY/2)){
                 t = true;
                 r = random.nextDouble() * 6.28 - 3.14;
                 double ar = Math.abs(r);
@@ -155,7 +184,7 @@ public class ServerGame implements ActionListener {
                 }
                 bits[1].increaseScore();
             }
-            if (paintX + sizeX/2 < game_field_start_point_x + 4 && !(paintY > bits[0].y + bits[0].globalY && paintY < bits[0].y + bits[0].globalY + bits[0].sizeY)){
+            if (x < 4 && !(y > bits[0].y - bits[0].sizeY/2 && y < bits[0].y + bits[0].sizeY/2)){
                 t = true;
                 r = random.nextDouble() * 6.28 - 3.14;
                 double ar = Math.abs(r);
@@ -165,7 +194,7 @@ public class ServerGame implements ActionListener {
                 }
                 bits[0].increaseScore();
             }
-            if (paintY + sizeY/2 > game_field_size + game_field_start_point_y - 4 && !(paintX > bits[3].x + bits[3].globalX && paintX < bits[3].x + bits[3].globalX + bits[3].sizeX)){
+            if (y > 750 - 4 && !(x > bits[3].x - bits[3].sizeX/2 && x < bits[3].x + bits[3].sizeX/2)){
                 t = true;
                 r = random.nextDouble() * 6.28 - 3.14;
                 while (!(r>0.85 && r<1.57-k || r>1.57+k && r<3.14-0.85)){
@@ -173,7 +202,7 @@ public class ServerGame implements ActionListener {
                 }
                 bits[3].increaseScore();
             }
-            if (paintY + sizeY/2 < game_field_start_point_y + 4 && !(paintX > bits[2].x + bits[2].globalX && paintX < bits[2].x + bits[2].globalX + bits[2].sizeX)){
+            if (y < 4 && !(x > bits[2].x - bits[2].sizeX/2 && x < bits[2].x + bits[2].sizeX/2)){
                 t = true;
                 r = random.nextDouble() * 6.28 - 3.14;
                 while (!(r<-0.85 && r>-1.57+k || r<-1.57-k && r>-3.14+0.85)){
@@ -188,6 +217,8 @@ public class ServerGame implements ActionListener {
                 isStopped = true;
                 x = 0;
                 y = 0;
+                countdown = 3;
+                countdownTime = new Date();
             }
         }
     }
@@ -222,6 +253,22 @@ public class ServerGame implements ActionListener {
                 }
                 dx = 0;
                 dy = 0;
+                int c = 0;
+                for (int i = 0; i < 4; i++){
+                    if (bits[i].score == 5){
+                        c++;
+                    }
+                }
+                if (c == 3){
+                    gameOver = true;
+                    timer.stop();
+                    for (int i=0; i<4; i++){
+                        if (players[i].equals("ready")){
+                            players[i] = "not ready";
+                        }
+                    }
+                    sendJSON("endGame");
+                }
             }
         }
 
@@ -229,24 +276,67 @@ public class ServerGame implements ActionListener {
             if (dx!=0 || dy!=0) {
                 x += dx * direction;
                 y += dy * direction;
-                if (x + globalX + sizeX > game_field_size + game_field_start_point_x) {
-                    x = game_field_size/2 - sizeX/2;
+                if (x + sizeX/2 > 750) {
+                    x = 750/2 - sizeX/2;
                 }
-                if (x + globalX < game_field_start_point_x) {
-                    x = - game_field_size/2 + sizeX/2;
+                if (x - sizeX/2 < 0) {
+                    x = - 750/2 + sizeX/2;
                 }
-                if (y + globalY + sizeY > game_field_size + game_field_start_point_y) {
-                    y = game_field_size/2 - sizeY/2;
+                if (y + sizeY/2 > 750) {
+                    y = 750/2 - sizeY/2;
                 }
-                if (y + globalY < game_field_start_point_y) {
-                    y = - game_field_size/2 + sizeY/2;
+                if (y + sizeY/2 < 0) {
+                    y = - 750/2 + sizeY/2;
                 }
             }
         }
     }
 
-    private void sendJSON(){
-
+    public void sendJSON(String mainTag){
+        String message;
+        JSONObject json = new JSONObject();
+        json.put("mainTag", mainTag);
+        if (mainTag.equals("readiness")) {
+            JSONArray array = new JSONArray();
+            for (int i = 0; i < 4; i++) {
+                array.put(players[i]);
+            }
+            json.put("ready", array);
+        }
+        else if (mainTag.equals("game")){
+            JSONArray ar;
+            for (int i=0; i<4; i++) {
+                ar = new JSONArray();
+                ar.put(bits[i].x);
+                ar.put(bits[i].y);
+                ar.put(bits[i].sizeX);
+                ar.put(bits[i].sizeY);
+                json.put("bit" + i, ar);
+            }
+            ar = new JSONArray();
+            ar.put(ball.x);
+            ar.put(ball.y);
+            json.put("ball", ar);
+            ar = new JSONArray();
+            for (int i = 0; i < 4; i++) {
+                ar.put(bits[i].score);
+            }
+            json.put("scores", ar);
+            json.put("countdown", countdown);
+        }
+        else if (mainTag.equals("endGame")){
+            JSONArray array = new JSONArray();
+            for (int i = 0; i < 4; i++) {
+                array.put(players[i]);
+            }
+            json.put("ready", array);
+        }
+        message = json.toString();
+        for (int i=0; i<4; i++){
+            if (players[i].equals("ready") || players[i].equals("not ready")){
+                out[i].println(message);
+            }
+        }
     }
 
     private void getJSON(){

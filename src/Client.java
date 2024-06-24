@@ -5,13 +5,12 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.util.ArrayList;
 
-public class Client {
+public class Client implements ActionListener{
     public JFrame window, window1, window2;
     ArrayList<Room> rooms = new ArrayList<Room>();
     Font font = new Font("Serif", Font.BOLD, 30);
@@ -26,7 +25,7 @@ public class Client {
 
     Client(JFrame window1, JFrame window, String resolution){
         try (
-                Socket socket = new Socket("127.О.О.1", 8000);
+                Socket socket = new Socket(InetAddress.getByName("localhost"), 8000);
                 PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         ) {
@@ -40,25 +39,58 @@ public class Client {
             makeWindow();
             makeJPanel();
             doit();
+
+//            String inputLine;
+//            while(!socket.isOutputShutdown()){
+//                if((inputLine = in.readLine()) != null){
+//                    System.out.println(inputLine);
+//                    JSONObject js = new JSONObject(inputLine);
+//                    if (js.getString("mainTag").equals("roomList")){
+//                        rooms.clear();
+//                        JSONArray ar = js.getJSONArray("rooms");
+//                        JSONObject js1;
+//                        for (int i = 0; i< ar.length(); i++){
+//                            js1 = ar.getJSONObject(i);
+//                            rooms.add(new Room(js1.getInt("id"), js1.getString("name"), js1.getString("password"), js1.getInt("countPlayers"), js1.getInt("maxCountPlayers")));
+//                        }
+//                        reWriteJPanel();
+//                    }
+//                    else if (js.getString("mainTag").equals("joinRoom")){
+//                        window2 = new JFrame();
+//                        ClientGame game = new ClientGame(window, window2, js, out, in, resolution);
+//                        window2.add(game);
+//                    }
+//                }
+//            }
+        }
+        catch (Throwable cause) {
+            System.out.println("connection error: " + cause.getMessage());
+            System.out.println(cause.toString());
+        }
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        //window.repaint();
+        try{
             String inputLine;
-            while(!socket.isOutputShutdown()){
-                if((inputLine = in.readLine()) != null){
-                    JSONObject js = new JSONObject(inputLine);
-                    if (js.getString("mainTag").equals("roomList")){
-                        rooms.clear();
-                        JSONArray ar = js.getJSONArray("rooms");
-                        JSONObject js1;
-                        for (int i = 0; i< ar.length(); i++){
-                            js1 = ar.getJSONObject(i);
-                            rooms.add(new Room(js1.getInt("id"), js1.getString("name"), js1.getString("password"), js1.getInt("countPlayers"), js1.getInt("maxCountPlayers")));
-                        }
-                        reWriteJPanel();
+            if((inputLine = in.readLine()) != null){
+                System.out.println(inputLine);
+                JSONObject js = new JSONObject(inputLine);
+                if (js.getString("mainTag").equals("roomList")){
+                    rooms.clear();
+                    JSONArray ar = js.getJSONArray("rooms");
+                    JSONObject js1;
+                    for (int i = 0; i< ar.length(); i++){
+                        js1 = ar.getJSONObject(i);
+                        rooms.add(new Room(js1.getInt("id"), js1.getString("name"), js1.getString("password"), js1.getInt("countPlayers"), js1.getInt("maxCountPlayers")));
                     }
-                    else if (js.getString("mainTag").equals("joinRoom")){
-                        window2 = new JFrame();
-                        ClientGame game = new ClientGame(window, window2, js, out, in, resolution);
-                        window2.add(game);
-                    }
+                    reWriteJPanel();
+                }
+                else if (js.getString("mainTag").equals("joinRoom")){
+                    window2 = new JFrame();
+                    ClientGame game = new ClientGame(window, window2, js, out, in, resolution);
+                    window2.add(game);
                 }
             }
         }
@@ -178,6 +210,7 @@ public class Client {
     }
 
     private void doit(){
+        System.out.println(1);
         JLabel lab = new JLabel();
         lab.setVisible(false);
         lab.setForeground(Color.white);
@@ -260,6 +293,7 @@ public class Client {
                         json.put("maxCountPlayers", count);
                         message = json.toString();
                         out.println(message);
+                        System.out.println(message);
 
                         creatingRoom = false;
                         button.setText("Create new room");
@@ -289,6 +323,11 @@ public class Client {
                 else{
                     window.setVisible(false);
                     window1.setVisible(true);
+                    JSONObject json = new JSONObject();
+                    String message;
+                    json.put("mainTag", "quit");
+                    message = json.toString();
+                    out.println(message);
                 }
             }
         });

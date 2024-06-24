@@ -31,16 +31,16 @@ public class Server {
             JSONObject json = new JSONObject();
             json.put("mainTag", "roomList");
             JSONArray array = new JSONArray();
-            JSONObject item = new JSONObject();
             for (int i = 0; i<rooms.size(); i++){
+                JSONObject item = new JSONObject();
                 ServerGame room = rooms.get(i);
                 item.put("id", room.id);
                 item.put("name", room.name);
                 item.put("password", room.password);
                 item.put("countPlayers", room.countPlayers);
                 item.put("maxCountPlayers", room.maxCountPlayers);
+                array.put(item);
             }
-            array.put(item);
             json.put("rooms", array);
             message = json.toString();
             out.println(message);
@@ -54,8 +54,8 @@ public class Server {
                     lastID += 1;
                 }
                 System.out.println("have read from client : " + inputLine);
-                out.println(Integer.valueOf(inputLine) + 1);
-                System.out.println("have wrote to client: " + (Integer.valueOf(inputLine) + 1));
+                //out.println(Integer.valueOf(inputLine) + 1);
+                //System.out.println("have wrote to client: " + (Integer.valueOf(inputLine) + 1));
             }
             System.out.println("client has disconnected");
         }

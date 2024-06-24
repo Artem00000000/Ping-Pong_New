@@ -124,7 +124,8 @@ public class Menu extends JFrame {
                 label1.setBounds(204, 30, 392, 70);
                 setVisible(false);
                 frame2 = new JFrame();
-                CSVmake csv = new CSVmake(frame, frame2);
+                //CSVmake csv = new CSVmake(frame, frame2);
+                Client client = new Client(frame, frame2, resolution);
                 //frame2.add(csv);
             }
         });
